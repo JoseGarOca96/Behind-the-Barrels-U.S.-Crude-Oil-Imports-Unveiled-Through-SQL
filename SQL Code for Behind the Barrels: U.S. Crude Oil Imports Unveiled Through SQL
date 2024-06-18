@@ -1,0 +1,237 @@
+_________________________________________________________________________________________________________________________________________________________________________
+-- Identify the top 5 countries from which the United States imported crude oil the most in terms of total volume over the entire period from 2009 to 2024. 
+-- Include the total volume of crude oil imported from each country in the result.
+
+SELECT Origin_Name,
+	SUM(Quantity) AS Total_Vol
+FROM my_data.oil
+WHERE Year BETWEEN 2009 AND 2024
+GROUP BY Origin_Name
+ORDER BY Total_Vol DESC
+LIMIT 5
+_________________________________________________________________________________________________________________________________________________________________________
+-- Analyze the monthly trends in crude oil imports over the entire period from 2009 to 2024. Calculate the average volume of crude oil imported per 
+-- month and identify any significant fluctuations or seasonal patterns in import volumes.
+
+SELECT 
+	Month, 
+	AVG(Quantity) AS Avg_Vol 
+	FROM my_data.oil
+    WHERE Year BETWEEN 2009 AND 2024
+GROUP BY 
+	Month
+
+_________________________________________________________________________________________________________________________________________________________________________
+-- Calculate the year-over-year growth rate in crude oil imports for each year from 2010 to 2024. Determine which years experienced the highest \
+-- and lowest growth rates in import volumes and provide the percentage change.
+
+WITH Yearly_Imports AS (SELECT 
+	Year, 
+    SUM(Quantity) AS Total_Vol
+FROM 
+	my_data.Oil
+WHERE Year BETWEEN 2010 AND 2024
+GROUP BY 
+	Year
+),
+Yearly_Growth AS 
+(SELECT 
+	alpha.Year,
+    alpha.Total_Vol,
+    beta.Total_Vol AS Pre_Tol_Vol,
+    ((alpha.Total_Vol - beta.Total_Vol) / CAST(beta.Total_Vol AS DECIMAL)) * 100 AS Growth_Rate
+FROM 
+	Yearly_Imports AS alpha
+LEFT JOIN 
+	Yearly_Imports AS beta
+ON 
+	alpha.Year = beta.Year + 1
+),
+results AS (SELECT 
+	Year,
+    Total_Vol,
+    Pre_Tol_Vol,
+    Growth_Rate,
+CASE
+	WHEN Growth_Rate IS NULL THEN 'NULL'
+	ELSE 
+    CONCAT(ROUND(Growth_Rate,2),'%')
+    END AS Final_Growth_Rate
+FROM 
+	Yearly_Growth
+ORDER BY 
+	Growth_Rate DESC)
+
+-- To find the year with the highest growth rate
+SELECT
+    Year,
+    growth_rate
+FROM
+    results
+WHERE
+    growth_rate = (SELECT MAX(growth_rate) FROM Yearly_Growth);
+
+-- To find the year with the lowest growth rate
+SELECT
+    Year,
+    growth_rate
+FROM
+    results
+WHERE
+    growth_rate = (SELECT MIN(growth_rate) FROM Yearly_Growth);
+
+# you will have to run either the max or min part one at a time with the rest of the code to get result
+
+________________________________________________________________________________________________________________________________________________________________________
+-- Investigate the distribution of crude oil imports across different U.S. ports of entry. Determine the top 3 ports of entry in terms of total volume 
+-- imported and the average volume of crude oil imported per shipment for each port."
+
+SELECT 
+    Destination_Type_Name AS Port_of_Entry,
+    SUM(Quantity) AS Total_Imported_Volume,
+    AVG(Quantity) AS Average_Imported_Volume_Per_Shipment
+FROM 
+    my_data.oil
+GROUP BY 
+    Destination_Type_Name
+ORDER BY 
+    Total_Imported_Volume DESC
+LIMIT 3
+
+_________________________________________________________________________________________________________________________________________________________________________
+-- Determine the market share of the top 5 oil companies in the United States based on the total volume of crude oil imports they handled 
+-- over the entire period from 2009 to 2024. Include the percentage of total imports for each oil company.
+
+WITH Top_Oil_Companies AS
+(SELECT 
+	Destination_Name AS Oil_Companies,
+	SUM(Quantity) AS Total_Volume
+FROM 
+	my_data.Oil
+WHERE BINARY Destination_Name = UPPER(Destination_Name) AND Destination_Name REGEXP '[A-Z]+$' 
+	AND YEAR BETWEEN 2009 AND 2024
+GROUP BY 
+	Destination_Name
+ORDER BY 
+	Total_Volume DESC
+LIMIT 5
+),
+Total_Imports_From_Five AS 
+(SELECT
+    SUM(Total_Volume) AS Total_Imports
+FROM 
+	Top_Oil_Companies
+
+),
+Results AS
+(SELECT 
+	alpha.Total_Volume,
+    alpha.Oil_Companies AS Oil_Companies,
+    beta.Total_Imports,
+    ((alpha.Total_Volume) / beta.Total_Imports) * 100 AS Percentage_Of_Total_Imports
+FROM 
+	Top_Oil_Companies AS alpha
+CROSS JOIN 
+	Total_Imports_From_Five AS beta
+)
+SELECT 
+	Oil_Companies,
+    CASE 
+		WHEN Percentage_Of_Total_Imports IS NULL THEN 'NULL'
+        ELSE
+		CONCAT(ROUND(Percentage_Of_Total_Imports,2),'%') 
+        END AS 
+        Percentage_Of_Total_Imports_Result
+FROM 
+	Results
+
+_________________________________________________________________________________________________________________________________________________________________________
+-- Classify the types of crude oil imported into the United States based on their properties (e.g., sweet, sour, light, heavy). 
+-- Calculate the total volume of each type of crude oil imported and determine the percentage distribution of each type.
+
+WITH Cruide_Oil AS 
+(SELECT 
+	Grade_Name,
+	SUM(Quantity) AS Total_Volume
+FROM my_data.oil
+GROUP BY 
+	Grade_Name
+ORDER BY 
+	Total_Volume DESC
+),
+Total AS
+(SELECT 
+	SUM(Total_Volume) AS Sum_Of_Total_Volume
+FROM 
+	Cruide_Oil
+),
+Results AS
+(SELECT 
+	alpha.Grade_Name,
+    alpha.Total_Volume,
+    beta.Sum_Of_Total_Volume,
+    ((alpha.Total_Volume) / beta.Sum_Of_Total_Volume) * 100 AS Percentage_Distribution_Of_Each_Type
+FROM 
+	Cruide_Oil AS alpha
+CROSS JOIN 
+	Total AS beta
+)
+SELECT 
+	Grade_Name,
+    Total_Volume,
+    Sum_Of_Total_Volume,
+    CASE
+	WHEN Percentage_Distribution_Of_Each_Type IS NULL THEN 'NULL'
+    ELSE 
+		CONCAT(ROUND(Percentage_Distribution_Of_Each_Type,2),'%') 
+	END AS Final_Percentage_Distribution_Of_Each_Type
+FROM 
+	Results
+ _________________________________________________________________________________________________________________________________________________________________________   
+-- Investigate if there is any seasonal variation in crude oil import volumes based on the type of crude oil. Calculate the average volume 
+-- of each type of crude oil imported for each month of the year and identify any significant peaks or troughs.
+
+SELECT 
+	Month, 
+	Grade_Name, 
+    AVG(Quantity) AS Avg_Total_Volume
+FROM my_data.oil
+GROUP BY 
+	Month,
+    Grade_Name
+ORDER BY 
+	Month , Grade_Name
+
+_________________________________________________________________________________________________________________________________________________________________________
+-- Assess the dependency of the United States on crude oil imports by comparing the ratio of imported crude oil volume to domestic crude oil production.
+-- Calculate this ratio for each year from 2009 to 2023 and determine if there are any trends indicating increasing or decreasing import dependency.
+
+WITH Imported AS
+(SELECT 
+	Year,
+	SUM(Quantity) AS Imported_Total_Volume
+FROM my_data.oil
+WHERE Year BETWEEN 2009 AND 2023
+GROUP BY 
+	Year
+),
+Domestic AS
+(SELECT 
+	Year,
+    U_S_Field_Production_of_Crude_Oil_Thousand_Barrels
+FROM
+	my_data.united_states_oil
+WHERE Year BETWEEN 2009 AND 2023
+)
+SELECT 
+	alpha.Year,	
+	alpha.Imported_Total_Volume,
+    beta.Year,
+	beta.U_S_Field_Production_of_Crude_Oil_Thousand_Barrels,
+    (alpha.Imported_Total_Volume/beta.U_S_Field_Production_of_Crude_Oil_Thousand_Barrels) AS Ratio
+FROM 
+	Imported AS alpha
+LEFT JOIN 
+	Domestic AS beta
+ON 
+	alpha.Year = beta.Year
