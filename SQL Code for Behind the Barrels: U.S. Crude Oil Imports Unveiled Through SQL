@@ -3,11 +3,13 @@ ________________________________________________________________________________
 -- Include the total volume of crude oil imported from each country in the result.
 
 SELECT Origin_Name,
-	SUM(Quantity) AS Total_Vol
+	Origin_Type_Name,
+	SUM(Quantity) AS Total_Volume
 FROM my_data.oil
-WHERE Year BETWEEN 2009 AND 2024
-GROUP BY Origin_Name
-ORDER BY Total_Vol DESC
+WHERE Year BETWEEN 2009 AND 2024 AND Origin_Type_Name = 'Country'
+GROUP BY Origin_Name,
+	Origin_Type_Name
+ORDER BY Total_Volume DESC
 LIMIT 5
 _________________________________________________________________________________________________________________________________________________________________________
 -- Analyze the monthly trends in crude oil imports over the entire period from 2009 to 2024. Calculate the average volume of crude oil imported per 
