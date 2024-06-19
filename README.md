@@ -1,2 +1,1 @@
-The analysis of this data set will be used to see how much crude oil is being imported from other countries into the United States. 
-In the end, I'll compare imported crude oil versus domestic crude oil. I will be using MySQL and Excel to prepare the dataset and to run SQL code to answer the objectives. 
+The data set will be used to analyze factors of the United States obtaining crude oil over the years and will compare imported crude oil versus domestic crude oil over the years. I will be using MySQL to answer the objectives, Excel to prepare the dataset, and Tableau if needed to better represent the results.
